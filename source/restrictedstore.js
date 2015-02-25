@@ -157,9 +157,10 @@ function RestrictedStore() {
     };
 
     wrapper.observe = function (modelID, observer, options) {
-        var mirror, mirrorEnable = (options) ? options.mirror : false;
+        var mirror, mirrorEnable = (options) ? options.mirror : false, state;
         if (modelID in store) {
-            mirror = (mirrorEnable === true) ? JSON.parse(JSON.stringify(store[modelID].model)) : false;
+            state = JSON.parse(JSON.stringify(store[modelID].model));
+            mirror = (mirrorEnable === true) ? state : false;
             store[modelID].observers.push({
                 observer: observer,
                 mirror: mirror,
@@ -169,7 +170,7 @@ function RestrictedStore() {
             logger.error("Store.observe: model doesn't exist : " + modelID);
         }
 
-        return mirror;
+        return mirror || state;
     };
 
     wrapper.unobserve = function (modelID, observer) {
