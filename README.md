@@ -1,2 +1,2 @@
 # RestrictedStore
-Service Locator (Store) for data models that allows get interactive copies of data models.
+Store (servicelocator) for data models, which allows to get interactive (updated) copies of data models.

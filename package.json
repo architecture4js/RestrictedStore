@@ -1,0 +1,25 @@
+{
+  "name": "RestrictedStore",
+  "version": "0.0.1",
+  "description": "Store (servicelocator) for data models, which allows to get interactive (updated) copies of data models.",
+  "main": "source/restrictedstore.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/architecture4js/RestrictedStore.git"
+  },
+  "keywords": [
+    "restricted",
+    "store",
+    "datamodel",
+    "immutable",
+    "flux"
+  ],
+  "author": "mobidev.biz <rad.js@mobidev.biz> (http://mobidev.biz/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/architecture4js/RestrictedStore/issues"
+  }
+}
