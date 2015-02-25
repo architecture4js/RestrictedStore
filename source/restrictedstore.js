@@ -42,13 +42,13 @@ function RestrictedStore() {
         return dest;
     }
 
-    function _observer(changes) {
+    function _observer(changes, force) {
         var mirror, weak;
         for (var i = 0, l = this.observers.length; i < l; i += 1) {
             mirror = this.observers[i].mirror;
             weak = this.observers[i].weak;
             if (typeof mirror === 'object') {
-                if (weak) {
+                if (weak && !force) {
                     mirror = _clone(mirror, this.model);
                     this.observers[i].mirror = mirror;
                 } else {
@@ -148,7 +148,7 @@ function RestrictedStore() {
             }
             ObserveBinder.observe(model, helper.observer);
 
-            helper.observer(model);
+            helper.observer(model, true);
         }else {
             logger.error("Store.change: model doesn't exist : " + modelID);
         }
