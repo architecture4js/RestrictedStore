@@ -1,5 +1,6 @@
 # RestrictedStore
 -------
+> ...if you need data models for business logic and their independent projections for displaying.
 
 JavaScript library that allows to get clones of plain JavaScript objects (JSON like object), which are bound to the model via 1-way data binding. Thus, changes in the model are reflected in its clone, but changes in the clone are not reflected in the model.
 
