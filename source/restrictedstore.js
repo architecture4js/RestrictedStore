@@ -202,15 +202,15 @@ function RestrictedStore() {
         return models;
     };
 
-    wrapper.getState = function (modelID) {
-        var state;
+    wrapper.getProjection = function (modelID) {
+        var projection;
         if (modelID in store) {
-            state = JSON.parse(JSON.stringify(store[modelID].model));
+            projection = JSON.parse(JSON.stringify(store[modelID].model));
         } else {
-            logger.error("Store.getState: model doesn't exist : " + modelID);
+            logger.error("Store.getProjection: model doesn't exist : " + modelID);
         }
 
-        return state;
+        return projection;
     };
 }
 

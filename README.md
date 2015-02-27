@@ -9,13 +9,13 @@ It is possible to create and track `strong` and `weak` clones:
 * `strong` - the clone has the form and structure of the source data model.
 * `weak`  - the clone contains the same data as the model does; but it can have another structure. For example, the array can be sorted in a different way or contain additional elements. If the clone is the object, it can contain additional attributes.
 
-It is also possible to send a notification via callback, into which comes the unchangeable state of the model.
+It is also possible to send a notification via callback, into which comes the unchangeable projection of the model.
 
 ##Dependencies
 `Object.observe` is used as the basis for functioning. That is why in case of need it is possible to use any polyfill that contains `Object.observe` and `Array.observe`.
 
 ##Idea
-Any module of your app can get the data from the model (state or an interactive clone) and track its changes via `modelID`. But it is possible to change the model only with the module that wrapped the model in **Store**.
+Any module of your app can get the data from the model (projection or an interactive clone) and track its changes via `modelID`. But it is possible to change the model only with the module that wrapped the model in **Store**.
 
 This brings several limitations to the application architecture, which lead to **single direction data flow** (like *Flux*).
 
@@ -40,21 +40,21 @@ var store = require("{{..}}/restrictedstore").Store;
 store.wrap('myModel', model);
 ```
 
-###getState
-Restores the `state` of a selected model at a given time. Further changes of the model are not reflected in `state`.
+###getProjection
+Restores the `projection` of a selected model at a given time. Further changes of the model are not reflected in `projection`.
  
 ```javascript
 // other module
-var state = store.getState('myModel');
+var projection = store.getProjection('myModel');
 ```
 ###observe
-Sets up an observer for the model. Restores the `state` of the model or `strong`/`weak` reflection, depending on the indicated options:
+Sets up an observer for the model. Restores the `projection` of the model or `strong`/`weak` reflection, depending on the indicated options:
 
 ```javascript
 // other module
 function observer(object, changes) {
 	// object === mirror if we used 'mirror: true'
-	// in other case object === new_state
+	// in other case object === new_projection
 }
 
 var mirror = store.observe('myModel', observer, options);

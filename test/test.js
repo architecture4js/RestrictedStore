@@ -31,31 +31,31 @@ describe('0.0: State test', function () {
         store.unwrap(modelID);
     });
 
-    it('0.0.0: Get state & check initial state equality', function () {
-        var state = store.getState(modelID);
-        expect(state).to.be.a('object');
-        (JSON.stringify(state)).should.equal(JSON.stringify(model));
+    it('0.0.0: Get projection & check initial projection equality', function () {
+        var projection = store.getProjection(modelID);
+        expect(projection).to.be.a('object');
+        (JSON.stringify(projection)).should.equal(JSON.stringify(model));
     });
 
-    it('0.0.1: Get state after model change', function () {
-        var state;
+    it('0.0.1: Get projection after model change', function () {
+        var projection;
         model.attr = 2;
-        state = store.getState(modelID);
-        expect(state).to.be.a('object');
-        (JSON.stringify(state)).should.equal(JSON.stringify(model));
+        projection = store.getProjection(modelID);
+        expect(projection).to.be.a('object');
+        (JSON.stringify(projection)).should.equal(JSON.stringify(model));
     });
 
-    it('0.0.2: Update state by callback', function (done) {
-        var state,
+    it('0.0.2: Update projection by callback', function (done) {
+        var projection,
             observer = function (object) {
                 (JSON.stringify(object)).should.equal(JSON.stringify(model));
-                (JSON.stringify(state)).should.not.equal(JSON.stringify(model));
+                (JSON.stringify(projection)).should.not.equal(JSON.stringify(model));
 
                 store.unobserve(modelID, observer);
                 done();
             };
 
-        state = store.observe(modelID, observer);
+        projection = store.observe(modelID, observer);
 
         model.array.push(4);
     });
@@ -335,14 +335,14 @@ describe('0.3: Unwrap & change models', function () {
 
     it('0.3.0: Change model', function (done) {
         var counter = 0,
-            state,
+            projection,
             observer = function (object) {
                 counter++;
 
                 if (counter === 1) {
                     store.change(modelID, newModel);
                 }
-                state = object;
+                projection = object;
             };
 
         store.observe(modelID, observer);
@@ -351,8 +351,8 @@ describe('0.3: Unwrap & change models', function () {
 
         setTimeout(function () {
             (counter).should.equal(2);
-            (JSON.stringify(store.getState(modelID))).should.equal(JSON.stringify(newModel));
-            (JSON.stringify(state)).should.equal(JSON.stringify(newModel));
+            (JSON.stringify(store.getProjection(modelID))).should.equal(JSON.stringify(newModel));
+            (JSON.stringify(projection)).should.equal(JSON.stringify(newModel));
 
             store.unobserve(modelID, observer);
             done();
@@ -372,7 +372,7 @@ describe('0.3: Unwrap & change models', function () {
 
         setTimeout(function () {
             (counter).should.equal(1);
-            expect(store.getState(modelID)).to.be.a('undefined');
+            expect(store.getProjection(modelID)).to.be.a('undefined');
             done();
         }, 100);
     });
