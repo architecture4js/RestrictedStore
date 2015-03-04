@@ -1,39 +1,40 @@
 function RestrictedStore() {
     var wrapper = this, store = {}, logger = require("./logger").logger,
-        ObserveBinder = require("./observebinder").ObserveBinder;
+        ObserveBinder = require("./observebinder").ObserveBinder,
+        states = ['valid', 'invalid', 'pending'];
 
-    function _notify(observer, immutable, changes) {
+    function _notify(observer, immutable, changes, state) {
         if (typeof observer === 'function') {
             setTimeout(function () {
-                observer(immutable, changes);
+                observer(immutable, changes, state);
             }, 0);
         }
     }
 
     function _clone(dest, obj) {
         if (Object.prototype.toString.call(obj) === '[object Array]') {
-            for (var i = 0, l = obj.length; i < l; i += 1){
+            for (var i = 0, l = obj.length; i < l; i += 1) {
                 var index = dest.indexOf(obj[i]);
-                if(index !== -1) {
+                if (index !== -1) {
                     if (Object.prototype.toString.call(obj[i]) === '[object Array]') {
-                        dest[index] = _clone(dest[index] || [] , obj[i]);
+                        dest[index] = _clone(dest[index] || [], obj[i]);
                     } else {
-                        dest[index] = _clone(dest[index] || {} , obj[i]);
+                        dest[index] = _clone(dest[index] || {}, obj[i]);
                     }
                 } else {
                     dest.push(obj[i]);
                 }
             }
         } else {
-            for(var key in obj) {
-                if(obj.hasOwnProperty(key)) {
+            for (var key in obj) {
+                if (obj.hasOwnProperty(key)) {
                     if (obj[key] === undefined || obj[key] == null || typeof(obj[key]) != 'object') {
                         dest[key] = obj[key];
                     } else {
                         if (Object.prototype.toString.call(obj[key]) === '[object Array]') {
-                            dest[key] = _clone(dest[key] || [] , obj[key]);
+                            dest[key] = _clone(dest[key] || [], obj[key]);
                         } else {
-                            dest[key] = _clone(dest[key] || {} , obj[key]);
+                            dest[key] = _clone(dest[key] || {}, obj[key]);
                         }
                     }
                 }
@@ -44,42 +45,49 @@ function RestrictedStore() {
 
     function _observer(changes, force) {
         var mirror, weak;
-        for (var i = 0, l = this.observers.length; i < l; i += 1) {
-            mirror = this.observers[i].mirror;
-            weak = this.observers[i].weak;
-            if (typeof mirror === 'object') {
-                if (weak && !force) {
-                    mirror = _clone(mirror, this.model);
-                    this.observers[i].mirror = mirror;
-                } else {
-                    if (Object.prototype.toString.call(mirror) === '[object Array]') {
-                        for (var j = 0, k = this.model.length; j < k; j += 1) {
-                            mirror[i] = JSON.parse(JSON.stringify(this.model[i]));
+        if (this.state !== states[2]) {
+            for (var i = 0, l = this.observers.length; i < l; i += 1) {
+                mirror = this.observers[i].mirror;
+                weak = this.observers[i].weak;
+                if (this.state === states[0]){
+                    if (typeof mirror === 'object') {
+                        if (weak && !force) {
+                            mirror = _clone(mirror, this.model);
+                            this.observers[i].mirror = mirror;
+                        } else {
+                            if (Object.prototype.toString.call(mirror) === '[object Array]') {
+                                for (var j = 0, k = this.model.length; j < k; j += 1) {
+                                    mirror[i] = JSON.parse(JSON.stringify(this.model[i]));
+                                }
+                                mirror.length = this.mirror.length;
+                            } else {
+                                for (var key in this.model) {
+                                    if (this.model.hasOwnProperty(key)) {
+                                        mirror[key] = JSON.parse(JSON.stringify(this.model[key]));
+                                    }
+                                }
+                                for (key in mirror) {
+                                    if (!this.model.hasOwnProperty(key)) {
+                                        delete mirror[key];
+                                    }
+                                }
+                            }
                         }
-                        mirror.length = this.mirror.length;
                     } else {
-                        for(var key in this.model) {
-                            if (this.model.hasOwnProperty(key)) {
-                                mirror[key] = JSON.parse(JSON.stringify(this.model[key]));
-                            }
-                        }
-                        for (key in mirror) {
-                            if (!this.model.hasOwnProperty(key)) {
-                                delete mirror[key];
-                            }
-                        }
+                        mirror = JSON.parse(JSON.stringify(this.model));
                     }
                 }
-            } else {
-                mirror = JSON.parse(JSON.stringify(this.model));
-            }
 
-            // divide flow
-            _notify(this.observers[i].observer, mirror, changes);
+                // divide flow
+                _notify(this.observers[i].observer, mirror, changes, this.state);
+                this.dirty = false;
+            }
+        } else {
+            this.dirty = true;
         }
     }
 
-    wrapper.wrap = function (modelID, model) {
+    wrapper.wrap = function (modelID, model, options) {
         var helper;
         if (modelID in store) {
             logger.error('Store.wrap: ID taken already : ' + modelID);
@@ -95,9 +103,11 @@ function RestrictedStore() {
 
         // attach observer
         helper = {
+            dirty: false,
             modelID: modelID,
             model: model,
-            observers: []
+            observers: [],
+            state: (options && options.state) ? options.state : states[0]
         };
         helper.observer = _observer.bind(helper);
         ObserveBinder.observe(model, helper.observer);
@@ -148,8 +158,8 @@ function RestrictedStore() {
             }
             ObserveBinder.observe(model, helper.observer);
 
-            helper.observer(model, true);
-        }else {
+            helper.observer(null, true);
+        } else {
             logger.error("Store.change: model doesn't exist : " + modelID);
         }
 
@@ -211,6 +221,50 @@ function RestrictedStore() {
         }
 
         return projection;
+    };
+
+    wrapper.getModelState = function (modelID) {
+        var state;
+        if (modelID in store) {
+            state = store[modelID].state;
+        } else {
+            logger.error("Store.setDataState: model doesn't exist : " + modelID);
+        }
+        return state;
+    };
+
+    wrapper.createPromise = function (modelID, executor) {
+        var promise;
+
+        function wrapper(resolve, reject) {
+            function curry(callback, state){
+                return function(val){
+                    var helper = store[modelID];
+                    helper.state = state;
+
+                    if (typeof callback == 'function') {
+                        callback(val);
+                    }
+                    if (helper.state !== states[2] && helper.dirty) {
+                        setTimeout(function () {
+                            if (helper.state !== states[2] && helper.dirty) {
+                                helper.observer(null, true);
+                            }
+                        }, 20);
+                    }
+                }
+            }
+            executor(curry(resolve, states[0]), curry(reject, states[1]));
+        }
+
+        if (modelID in store) {
+            store[modelID].state = states[2];
+            promise = new Promise(wrapper);
+        } else {
+            logger.error("Store.createPromise: model doesn't exist : " + modelID);
+        }
+
+        return promise;
     };
 }
 

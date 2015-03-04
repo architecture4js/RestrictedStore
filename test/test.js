@@ -4,6 +4,7 @@ var should = require('chai').should();
 
 // enable polyfills
 var observe = require("../polyfills/object-observe");
+require("../polyfills/es6-promise-2.0.1").polyfill();
 
 // variables
 var store = require("../source/restrictedstore").Store;
@@ -376,4 +377,131 @@ describe('0.3: Unwrap & change models', function () {
             done();
         }, 100);
     });
+});
+
+describe('0.4: Promises test', function () {
+
+    before(function () {
+        model = {
+            attr: 0,
+            array: [
+                1,
+                2,
+                3
+            ],
+            obj: {
+                attr: 0
+            }
+        };
+        store.wrap(modelID, model);
+    });
+
+    after(function () {
+        //store.unwrap(modelID);
+    });
+
+    it('0.4.0: Create promise for model', function (done) {
+        var executor = function (resolve, reject) {
+                setTimeout(function () {
+                    resolve();
+                }, 50);
+            },
+            promise = store.createPromise(modelID, executor);
+
+
+        promise.then(done);
+    });
+
+
+    it('0.4.1: Model states', function (done) {
+        var promise, state = store.getModelState(modelID);
+
+        function executor(resolve, reject) {
+            setTimeout(function () {
+                reject('reject value');
+            }, 100);
+        }
+
+        promise = store.createPromise(modelID, executor);
+        state += ' ' + store.getModelState(modelID);
+        promise.catch(function (val) {
+            state += ' ' + store.getModelState(modelID);
+            (state).should.equal('valid pending invalid');
+            (val).should.equal('reject value');
+
+            done();
+        });
+    });
+
+    it('0.4.2: Promises chain', function (done) {
+        function createAsync(val) {
+            return store.createPromise(modelID, function (resolve, reject) {
+                setTimeout(function () {
+                    resolve(val + ' ' + store.getModelState(modelID));
+                }, 10);
+            });
+        }
+
+        createAsync(store.getModelState(modelID)).then(function (val) {
+            return createAsync(val);
+        }).then(function (val) {
+            return createAsync(val);
+        }).then(function (val) {
+            (val + ' ' + store.getModelState(modelID)).should.equal('invalid pending pending pending valid');
+            done();
+        });
+    });
+
+    it('0.4.3: Promises chain with callback notification', function (done) {
+        function createAsync(val) {
+            return store.createPromise(modelID, function (resolve) {
+                setTimeout(function() {
+                    model.attr += 1;
+                    resolve();
+                }, 10);
+            });
+        }
+
+        function observer() {
+            (model.attr).should.equal(3);
+            store.unobserve(modelID, observer);
+            done();
+        }
+
+        store.observe(modelID, observer);
+
+        createAsync(store.getModelState(modelID)).then(function (val) {
+            return createAsync(val);
+        }).then(function (val) {
+            return createAsync(val);
+        });
+    });
+
+    it('0.4.4: Promises chain with callback notification view "dirty" checking', function (done) {
+        function createAsync(val) {
+            return store.createPromise(modelID, function (resolve) {
+                setTimeout(function() {
+                    if (model.obj.attr === 0) {
+                        model.obj.attr += 1;
+                    }
+                    resolve();
+                }, 10);
+            });
+        }
+
+        function observer(object) {
+            (object.obj.attr).should.equal(1);
+            store.unobserve(modelID, observer);
+            done();
+        }
+
+        store.observe(modelID, observer);
+
+        createAsync(store.getModelState(modelID)).then(function (val) {
+            return createAsync(val);
+        }).then(function (val) {
+            return createAsync(val);
+        });
+    });
+
 });

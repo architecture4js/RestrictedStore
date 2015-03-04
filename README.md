@@ -37,7 +37,12 @@ model = { attr: 1,
 // module 1
 var store = require("{{..}}/restrictedstore").Store;
 
-store.wrap('myModel', model);
+store.wrap('myModel', model, [options]);
+```
+You can set the model `state` via `options`. For example, if you want to get a notification from the model only after the promise is executed.
+
+```javascript
+store.wrap('myModel', model, {state: 'pending'});
 ```
 
 ###getProjection
@@ -52,9 +57,13 @@ Sets up an observer for the model. Restores the `projection` of the model or `st
 
 ```javascript
 // other module
-function observer(object, changes) {
+function observer(object, changes, state) {
 	// object === mirror if we used 'mirror: true'
 	// in other case object === new_projection
+	
+	// changes - changes in model
+	
+	// state - datamodel state 'valid' or 'invalid'
 }
 
 var mirror = store.observe('myModel', observer, options);
@@ -100,6 +109,56 @@ Clears up all the registered objects in `Store` and restores the array of models
 
 store.unwrap('myModel');
 ```
+
+###getModelState
+Restores `state` of the model; it can take such values as **valid**, **invalid** and **pending**. 
+Notifications about a change of the model are executed only in valid and invalid state.
+
+```javascript
+var state = store.getModelState('myModel');
+```
+>Take notice that the state of the model is changed automatically via promises, which are generated with `createPromise` method.
+
+>When the state is **invalid**, the observer is notified without any changes of data in the model.
+
+###createPromise
+Returns the `promise` object, which is bound to the current model. While creating a `promise`, the model receives the pending status, and model listeners are not notified about the change. After the promise is executed, depending on the result, the model receives either **valid** (`resolve`), or **invalid** (`reject`) state.
+
+```javascript
+function executor(resolve, reject) {
+            setTimeout(function () {
+                resolve('value');
+            }, 100);
+        }
+        
+var promise = store.createPromise('myModel', executor);
+```
+
+It is also possible to build a chain of promises.
+
+```javascript
+        function createAsync(val) {
+            return store.createPromise('myModel', function (resolve, reject) {
+                setTimeout(function () {
+                		// todo smth with val
+                    resolve(val);
+                }, 10);
+            });
+        }
+
+        createAsync(val).then(function (val) {
+            return createAsync(val);
+        }).then(function (val) {
+            return createAsync(val);
+        }).then(function (val) {
+            // todo smth
+        });
+
+```
+
+>Take notice that notifications are asynchronous, and the change of the model status in the chain happens only upon its completion.
+
+>Take notice that the check for changes in the model for a notification is performed after **20 ms** upon the ending of the latest promise, in order to exclude the possibility of a double notification after the change of the model before the resolve of the promise.
 
 ##Roadmap
 
